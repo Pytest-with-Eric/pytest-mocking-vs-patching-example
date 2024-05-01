@@ -1,5 +1,6 @@
 import pytest
 import requests
+from unittest.mock import Mock
 from src.cat_api import CatFact
 
 
@@ -11,30 +12,48 @@ def cat_fact():
     yield CatFact()
 
 
+@pytest.fixture
+def mock_response():
+    yield {
+        "status_code": 200,
+        "response": {"data": "Cats are amazing!"},
+    }
+
+
 def test_get_cat_fact_no_mock(cat_fact):
     """
     Test the get_cat_fact method of the CatFact class (No mocking or patching).
     """
     response = cat_fact.get_cat_fact()
-    print(response)
     assert response["status_code"] == 200
 
 
-def test_get_cat_fact_success(mocker, cat_fact):
+def test_get_cat_fact_mock(cat_fact, mock_response):
     """
-    Test the get_cat_fact method of the CatFact class (With Mocking and Patching).
+    Test the get_cat_fact method of the CatFact class (With Mocking).
     """
-    # Mock response data, ensuring it matches the structure the real method would return
-    mock_response_data = {
-        "status_code": 200,
-        "response": {
-            "data": "Cats are amazing!"
-        },  # Make sure this matches the actual response structure
-    }
+
+    # Create a mock for the get_cat_fact method
+    cat_fact.get_cat_fact = Mock(return_value=mock_response)
+
+    # Call the method
+    response = cat_fact.get_cat_fact()
+
+    # Assert the mock was called once
+    cat_fact.get_cat_fact.assert_called_once()
+
+    # Assert the expected response
+    assert response == mock_response
+
+
+def test_get_cat_fact_patch(mocker, cat_fact, mock_response):
+    """
+    Test the get_cat_fact method of the CatFact class (with Patching).
+    """
 
     # Use mocker to patch the get_cat_fact method of the CatFact class and get a reference to the mock
     mock_get_cat_fact = mocker.patch(
-        "src.cat_api.CatFact.get_cat_fact", return_value=mock_response_data
+        "src.cat_api.CatFact.get_cat_fact", return_value=mock_response
     )
 
     # Call the method
@@ -44,40 +63,4 @@ def test_get_cat_fact_success(mocker, cat_fact):
     mock_get_cat_fact.assert_called_once()
 
     # Assert the expected response
-    assert response == mock_response_data, "Expected mock response data not returned"
-
-
-def test_get_cat_fact_success_stub(mocker):
-     """
-     Test the get_cat_fact method of the CatFact class (With Stubbing).
-     """
-     stub_response_data = {
-        "status_code": 200,
-        "response": {
-            "data": "Cats are amazing!"
-        },  # Make sure this matches the actual response structure
-     }
-     
-     stub_get_cat_fact = mocker.stub(name='get_cat_fact')
-     stub_get_cat_fact.return_value = stub_response_data
-
-     # Call the method
-     response = stub_get_cat_fact()
-     assert response == stub_response_data
-
-def test_get_cat_fact_success_monkeypatch(monkeypatch, cat_fact):
-    """
-    Test the get_cat_fact method of the CatFact class (With Monkeypatch).
-    """
-    def mock_return():
-        return {
-        "status_code": 200,
-        "response": {
-            "data": "Cats are amazing!"
-        },  # Make sure this matches the actual response structure
-     }
-    
-    monkeypatch.setattr(cat_fact, "get_cat_fact", mock_return)
-    assert cat_fact.get_cat_fact() == mock_return()
-
-
+    assert response == mock_response
